@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# secrets: never commit real credentials (copy .env.example to .env locally)
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+*.log
+
+# OS
+.DS_Store
