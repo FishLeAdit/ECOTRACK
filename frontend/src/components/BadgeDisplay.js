@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
+import api, { getErrorMessage } from '../api';
+import { ErrorBanner } from './ui';
+import AnimatedNumber from './AnimatedNumber';
 
 function BadgeDisplay(props) {
-  const { userId = 'default_user', showStats = true } = props;
+  // refreshKey changes whenever the user logs, edits or deletes something
+  const { showStats = true, refreshKey = 0 } = props;
   const [badges, setBadges] = useState([]);
   const [userStats, setUserStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showAllBadges, setShowAllBadges] = useState(false);
 
   // Rarity colors
@@ -23,26 +27,31 @@ function BadgeDisplay(props) {
     legendary: '0 0 25px rgba(243, 156, 18, 0.8)'
   };
 
-  useEffect(() => {
-    fetchBadgesAndStats();
-  }, [userId]);
-
-  const fetchBadgesAndStats = async () => {
+  const fetchBadgesAndStats = useCallback(async () => {
     try {
-      setLoading(true);
       const [badgesResponse, statsResponse] = await Promise.all([
-        axios.get(`http://localhost:5000/api/badges/${userId}`),
-        axios.get(`http://localhost:5000/api/stats/${userId}`)
+        api.get('/api/badges'),
+        api.get('/api/stats')
       ]);
-      
+
       setBadges(badgesResponse.data);
       setUserStats(statsResponse.data);
-    } catch (error) {
-      console.error('Error fetching badges and stats:', error);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching badges and stats:', err);
+      setError(getErrorMessage(err, 'Could not load your badges.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchBadgesAndStats();
+  }, [fetchBadgesAndStats, refreshKey]);
+
+  if (error && badges.length === 0 && !userStats) {
+    return <ErrorBanner message={error} onRetry={fetchBadgesAndStats} />;
+  }
 
   if (loading) {
     return (
@@ -51,7 +60,7 @@ function BadgeDisplay(props) {
         justifyContent: 'center',
         alignItems: 'center',
         padding: '40px',
-        color: '#666'
+        color: 'var(--text-soft)'
       }}>
         <div style={{ fontSize: '24px' }}>🏆</div>
         <span style={{ marginLeft: '10px' }}>Loading badges...</span>
@@ -67,7 +76,7 @@ function BadgeDisplay(props) {
 
   return (
     <div style={{
-      backgroundColor: '#f8f9fa',
+      backgroundColor: 'var(--surface-alt)',
       borderRadius: '15px',
       padding: '25px',
       marginBottom: '30px',
@@ -81,7 +90,7 @@ function BadgeDisplay(props) {
         marginBottom: '20px'
       }}>
         <h2 style={{
-          color: '#2c3e50',
+          color: 'var(--text)',
           margin: 0,
           display: 'flex',
           alignItems: 'center',
@@ -119,40 +128,40 @@ function BadgeDisplay(props) {
           gap: '15px',
           marginBottom: '25px',
           padding: '15px',
-          backgroundColor: 'white',
+          backgroundColor: 'var(--surface)',
           borderRadius: '10px',
-          border: '2px solid #ecf0f1'
+          border: '2px solid var(--border)'
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '24px', color: '#e67e22', marginBottom: '5px' }}>🔥</div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50' }}>
-              {userStats.currentStreak}
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text)' }}>
+              <AnimatedNumber value={userStats.currentStreak} />
             </div>
-            <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Current Streak</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Current Streak</div>
           </div>
           
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '24px', color: '#27ae60', marginBottom: '5px' }}>🌟</div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50' }}>
-              {userStats.consecutivePositiveActivities}
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text)' }}>
+              <AnimatedNumber value={userStats.consecutivePositiveActivities} />
             </div>
-            <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Positive Streak</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Positive Streak</div>
           </div>
           
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '24px', color: '#3498db', marginBottom: '5px' }}>💯</div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50' }}>
-              {userStats.totalPoints}
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text)' }}>
+              <AnimatedNumber value={userStats.totalPoints} />
             </div>
-            <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Total Points</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Points</div>
           </div>
           
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '24px', color: '#9b59b6', marginBottom: '5px' }}>🎯</div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50' }}>
-              {userStats.goalsCompleted}
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text)' }}>
+              <AnimatedNumber value={userStats.goalsCompleted} />
             </div>
-            <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Goals Done</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Goals Done</div>
           </div>
         </div>
       )}
@@ -172,7 +181,7 @@ function BadgeDisplay(props) {
               alignItems: 'center',
               gap: '8px',
               padding: '8px 12px',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--surface)',
               borderRadius: '8px',
               border: `2px solid ${rarityColors[rarity]}`,
               boxShadow: rarityGlow[rarity]
@@ -196,10 +205,10 @@ function BadgeDisplay(props) {
         <div style={{
           textAlign: 'center',
           padding: '40px',
-          color: '#666',
-          backgroundColor: 'white',
+          color: 'var(--text-soft)',
+          backgroundColor: 'var(--surface)',
           borderRadius: '12px',
-          border: '2px dashed #ddd'
+          border: '2px dashed var(--border)'
         }}>
           <div style={{ fontSize: '48px', marginBottom: '15px' }}>🏆</div>
           <p style={{ fontSize: '18px', marginBottom: '10px' }}>No badges earned yet!</p>
@@ -211,11 +220,13 @@ function BadgeDisplay(props) {
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '15px'
         }}>
-          {displayedBadges.map((badge) => (
+          {displayedBadges.map((badge, index) => (
             <div
               key={badge._id}
+              className="fade-up"
               style={{
-                backgroundColor: 'white',
+                '--i': index,
+                backgroundColor: 'var(--surface)',
                 padding: '20px',
                 borderRadius: '12px',
                 textAlign: 'center',
@@ -263,7 +274,7 @@ function BadgeDisplay(props) {
               {/* Badge Name */}
               <h3 style={{
                 margin: '0 0 8px 0',
-                color: '#2c3e50',
+                color: 'var(--text)',
                 fontSize: '16px',
                 fontWeight: 'bold'
               }}>
@@ -273,7 +284,7 @@ function BadgeDisplay(props) {
               {/* Badge Description */}
               <p style={{
                 margin: '0 0 12px 0',
-                color: '#7f8c8d',
+                color: 'var(--text-muted)',
                 fontSize: '12px',
                 lineHeight: '1.4'
               }}>
@@ -314,7 +325,7 @@ function BadgeDisplay(props) {
         <div style={{
           textAlign: 'center',
           marginTop: '15px',
-          color: '#7f8c8d',
+          color: 'var(--text-muted)',
           fontSize: '14px'
         }}>
           ... and {badges.length - 6} more badges

@@ -1,26 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+import api, { getErrorMessage } from '../api';
+import { ErrorBanner, ProgressBar, Spinner } from './ui';
+import AnimatedNumber from './AnimatedNumber';
 
 function GoalHistory({ onBack }) {
   const [goalHistory, setGoalHistory] = useState([]);
   const [filter, setFilter] = useState('all'); // 'all', 'successful', 'failed'
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchGoalHistory();
-  }, []);
-
-  const fetchGoalHistory = async () => {
+  const fetchGoalHistory = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/goals/default_user/history');
+      const response = await api.get('/api/goals/history');
       setGoalHistory(response.data);
+      setError('');
     } catch (err) {
       console.error('❌ Error fetching goal history:', err);
+      setError(getErrorMessage(err, 'Could not load your goal history.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchGoalHistory();
+  }, [fetchGoalHistory]);
 
   const filteredGoals = goalHistory.filter(goal => {
     if (filter === 'all') return true;
@@ -42,10 +47,19 @@ function GoalHistory({ onBack }) {
   };
 
   if (loading) {
+    return <Spinner label="Loading goal history…" />;
+  }
+
+  if (error) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <div style={{ fontSize: '24px', marginBottom: '20px' }}>⏳</div>
-        <p>Loading goal history...</p>
+      <div style={{ padding: '20px' }}>
+        <button
+          onClick={onBack}
+          style={{ padding: '10px 15px', backgroundColor: '#95a5a6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' }}
+        >
+          ← Back
+        </button>
+        <ErrorBanner message={error} onRetry={fetchGoalHistory} />
       </div>
     );
   }
@@ -76,7 +90,7 @@ function GoalHistory({ onBack }) {
         >
           ← Back
         </button>
-        <h1 style={{ margin: 0, color: '#2c3e50' }}>📚 Goal History</h1>
+        <h1 style={{ margin: 0, color: 'var(--text)' }}>📚 Goal History</h1>
       </div>
 
       <button 
@@ -102,13 +116,13 @@ function GoalHistory({ onBack }) {
         alignItems: 'center',
         flexWrap: 'wrap'
       }}>
-        <span style={{ color: '#555', fontSize: '16px' }}>Filter by:</span>
+        <span style={{ color: 'var(--text-soft)', fontSize: '16px' }}>Filter by:</span>
         <button
           onClick={() => setFilter('all')}
           style={{
             padding: '8px 16px',
-            backgroundColor: filter === 'all' ? '#3498db' : '#ecf0f1',
-            color: filter === 'all' ? 'white' : '#2c3e50',
+            backgroundColor: filter === 'all' ? '#3498db' : 'var(--track)',
+            color: filter === 'all' ? 'white' : 'var(--text)',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
@@ -122,8 +136,8 @@ function GoalHistory({ onBack }) {
           onClick={() => setFilter('successful')}
           style={{
             padding: '8px 16px',
-            backgroundColor: filter === 'successful' ? '#27ae60' : '#ecf0f1',
-            color: filter === 'successful' ? 'white' : '#2c3e50',
+            backgroundColor: filter === 'successful' ? '#27ae60' : 'var(--track)',
+            color: filter === 'successful' ? 'white' : 'var(--text)',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
@@ -137,8 +151,8 @@ function GoalHistory({ onBack }) {
           onClick={() => setFilter('failed')}
           style={{
             padding: '8px 16px',
-            backgroundColor: filter === 'failed' ? '#e74c3c' : '#ecf0f1',
-            color: filter === 'failed' ? 'white' : '#2c3e50',
+            backgroundColor: filter === 'failed' ? '#e74c3c' : 'var(--track)',
+            color: filter === 'failed' ? 'white' : 'var(--text)',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
@@ -155,10 +169,10 @@ function GoalHistory({ onBack }) {
         <div style={{
           textAlign: 'center',
           padding: '60px 20px',
-          color: '#666',
-          backgroundColor: '#f8f9fa',
+          color: 'var(--text-soft)',
+          backgroundColor: 'var(--surface-alt)',
           borderRadius: '12px',
-          border: '2px dashed #ddd'
+          border: '2px dashed var(--border)'
         }}>
           <div style={{ fontSize: '48px', marginBottom: '20px' }}>📚</div>
           <p style={{ fontSize: '18px', marginBottom: '10px' }}>
@@ -173,9 +187,10 @@ function GoalHistory({ onBack }) {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '20px' }}>
-          {filteredGoals.map((goal) => (
-            <div key={goal._id} style={{
-              backgroundColor: 'white',
+          {filteredGoals.map((goal, index) => (
+            <div key={goal._id} className="fade-up hover-lift" style={{
+              '--i': Math.min(index, 10),
+              backgroundColor: 'var(--surface)',
               padding: '25px',
               borderRadius: '12px',
               boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -183,11 +198,8 @@ function GoalHistory({ onBack }) {
               position: 'relative',
               overflow: 'hidden'
             }}>
-              {/* Status Badge */}
-              <div style={{
-                position: 'absolute',
-                top: '15px',
-                right: '15px',
+              {/* Status Badge (positioned by .goal-status-badge in App.css) */}
+              <div className="goal-status-badge" style={{
                 padding: '8px 12px',
                 backgroundColor: getStatusColor(goal.wasSuccessful),
                 color: 'white',
@@ -204,7 +216,7 @@ function GoalHistory({ onBack }) {
               <div style={{ marginBottom: '20px' }}>
                 <h3 style={{ 
                   margin: '0 0 10px 0', 
-                  color: '#2c3e50',
+                  color: 'var(--text)',
                   fontSize: '22px',
                   textTransform: 'capitalize'
                 }}>
@@ -212,7 +224,7 @@ function GoalHistory({ onBack }) {
                 </h3>
                 <p style={{ 
                   margin: '0', 
-                  color: '#7f8c8d',
+                  color: 'var(--text-muted)',
                   fontSize: '16px'
                 }}>
                   Completed on {new Date(goal.completionDate).toLocaleDateString()}
@@ -227,25 +239,25 @@ function GoalHistory({ onBack }) {
                 marginBottom: '20px'
               }}>
                 <div>
-                  <h4 style={{ margin: '0 0 8px 0', color: '#555', fontSize: '14px' }}>Target</h4>
-                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#2c3e50' }}>
-                    {goal.targetPoints} points
+                  <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-soft)', fontSize: '14px' }}>Target</h4>
+                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'var(--text)' }}>
+                    <AnimatedNumber value={goal.targetPoints} /> points
                   </p>
                 </div>
                 <div>
-                  <h4 style={{ margin: '0 0 8px 0', color: '#555', fontSize: '14px' }}>Achieved</h4>
+                  <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-soft)', fontSize: '14px' }}>Achieved</h4>
                   <p style={{ 
                     margin: 0, 
                     fontSize: '18px', 
                     fontWeight: 'bold', 
                     color: goal.wasSuccessful ? '#27ae60' : '#e74c3c'
                   }}>
-                    {goal.currentPoints} points
+                    <AnimatedNumber value={goal.currentPoints} /> points
                   </p>
                 </div>
                 <div>
-                  <h4 style={{ margin: '0 0 8px 0', color: '#555', fontSize: '14px' }}>Period</h4>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#2c3e50' }}>
+                  <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-soft)', fontSize: '14px' }}>Period</h4>
+                  <p style={{ margin: 0, fontSize: '14px', color: 'var(--text)' }}>
                     {new Date(goal.startDate).toLocaleDateString()} - {new Date(goal.endDate).toLocaleDateString()}
                   </p>
                 </div>
@@ -258,37 +270,29 @@ function GoalHistory({ onBack }) {
                   justifyContent: 'space-between',
                   marginBottom: '8px'
                 }}>
-                  <span style={{ fontSize: '14px', color: '#555' }}>
-                    Progress: {goal.currentPoints} / {goal.targetPoints} points
+                  <span style={{ fontSize: '14px', color: 'var(--text-soft)' }}>
+                    Progress: <AnimatedNumber value={goal.currentPoints} /> / {goal.targetPoints} points
                   </span>
                   <span style={{ 
                     fontSize: '14px', 
                     fontWeight: 'bold',
                     color: getStatusColor(goal.wasSuccessful)
                   }}>
-                    {Math.round((goal.currentPoints / goal.targetPoints) * 100)}%
+                    <AnimatedNumber value={Math.round((goal.currentPoints / goal.targetPoints) * 100)} suffix="%" />
                   </span>
                 </div>
-                <div style={{
-                  width: '100%',
-                  height: '10px',
-                  backgroundColor: '#ecf0f1',
-                  borderRadius: '5px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${Math.min((goal.currentPoints / goal.targetPoints) * 100, 100)}%`,
-                    height: '100%',
-                    backgroundColor: getStatusColor(goal.wasSuccessful),
-                    transition: 'width 0.3s ease'
-                  }} />
-                </div>
+                <ProgressBar
+                  percent={(goal.currentPoints / goal.targetPoints) * 100}
+                  color={getStatusColor(goal.wasSuccessful)}
+                  height={10}
+                  label="Goal progress"
+                />
               </div>
 
               {/* Achievement Message */}
               <div style={{
                 padding: '15px',
-                backgroundColor: goal.wasSuccessful ? '#d5f4e6' : '#fadbd8',
+                backgroundColor: goal.wasSuccessful ? 'var(--pos-soft-bg)' : 'var(--neg-soft-bg)',
                 borderRadius: '8px',
                 textAlign: 'center'
               }}>

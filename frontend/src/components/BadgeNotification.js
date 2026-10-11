@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Confetti } from './ui';
 
 const BadgeNotification = ({ badges = [], onClose }) => {
   const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0);
@@ -68,6 +69,8 @@ const BadgeNotification = ({ badges = [], onClose }) => {
         setTimeout(() => onClose && onClose(), 300);
       }}
     >
+      {/* Re-keyed per badge so each new badge gets its own burst */}
+      <Confetti key={currentBadge.badgeId} pieces={45} />
       <style>
         {`
           @keyframes fadeIn {
@@ -99,7 +102,7 @@ const BadgeNotification = ({ badges = [], onClose }) => {
       <div
         className="badge-container"
         style={{
-          backgroundColor: 'white',
+          backgroundColor: 'var(--surface)',
           borderRadius: '20px',
           padding: '40px',
           textAlign: 'center',
@@ -199,7 +202,7 @@ const BadgeNotification = ({ badges = [], onClose }) => {
 
         {/* Badge Name */}
         <h3 style={{
-          color: '#2c3e50',
+          color: 'var(--text)',
           fontSize: '24px',
           fontWeight: 'bold',
           margin: '0 0 10px 0'
@@ -209,7 +212,7 @@ const BadgeNotification = ({ badges = [], onClose }) => {
 
         {/* Badge Description */}
         <p style={{
-          color: '#7f8c8d',
+          color: 'var(--text-muted)',
           fontSize: '16px',
           lineHeight: '1.4',
           margin: '0 0 20px 0'

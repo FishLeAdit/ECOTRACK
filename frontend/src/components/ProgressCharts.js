@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
+import api, { getErrorMessage } from '../api';
+import { useTheme } from '../ThemeContext';
+import { ErrorBanner, Spinner } from './ui';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,7 +12,8 @@ import {
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
+  Filler
 } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 
@@ -23,33 +26,51 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
+  Filler // needed for the line chart's shaded area (fill: true)
 );
 
-function ProgressCharts({ userId = 'default_user' }) {
+function ProgressCharts({ refreshKey = 0 }) {
+  const { theme } = useTheme();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [timeRange, setTimeRange] = useState('week'); // 'day', 'week', 'month'
 
-  useEffect(() => {
-    fetchActivities();
-  }, [userId, timeRange]);
-
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/activities/${userId}`);
+      const response = await api.get('/api/activities');
       setActivities(response.data);
+      setError('');
     } catch (err) {
       console.error('Error fetching activities:', err);
+      setError(getErrorMessage(err, 'Could not load your chart data.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Charts group the same activities in different ways, so only new data needs a fetch
+  useEffect(() => {
+    fetchActivities();
+  }, [fetchActivities, refreshKey]);
 
   if (loading) {
-    return <div>Loading charts...</div>;
+    return <Spinner label="Loading charts…" />;
   }
+
+  if (error && activities.length === 0) {
+    return <ErrorBanner message={error} onRetry={fetchActivities} />;
+  }
+
+  // Chart.js draws on a canvas, so it can't read CSS variables: pick colors per theme
+  const textColor = theme === 'dark' ? '#b6c2cf' : '#555555';
+  const gridColor = theme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+  const axisOptions = (title) => ({
+    ticks: { color: textColor },
+    grid: { color: gridColor },
+    ...(title ? { title: { display: true, text: title, color: textColor } } : {})
+  });
 
   // Process data for charts
   const processTimeData = () => {
@@ -131,12 +152,12 @@ function ProgressCharts({ userId = 'default_user' }) {
   return (
     <div style={{ 
       marginTop: '40px',
-      backgroundColor: '#f8f9fa',
+      backgroundColor: 'var(--surface-alt)',
       borderRadius: '15px',
       padding: '25px',
       boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
     }}>
-      <h2 style={{ color: '#2c3e50', marginBottom: '25px' }}>📊 Progress Visualization</h2>
+      <h2 style={{ color: 'var(--text)', marginBottom: '25px' }}>📊 Progress Visualization</h2>
       
       {/* Time Range Selector */}
       <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
@@ -144,8 +165,8 @@ function ProgressCharts({ userId = 'default_user' }) {
           onClick={() => setTimeRange('day')}
           style={{
             padding: '8px 16px',
-            backgroundColor: timeRange === 'day' ? '#3498db' : '#ecf0f1',
-            color: timeRange === 'day' ? 'white' : '#2c3e50',
+            backgroundColor: timeRange === 'day' ? '#3498db' : 'var(--track)',
+            color: timeRange === 'day' ? 'white' : 'var(--text)',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer'
@@ -157,8 +178,8 @@ function ProgressCharts({ userId = 'default_user' }) {
           onClick={() => setTimeRange('week')}
           style={{
             padding: '8px 16px',
-            backgroundColor: timeRange === 'week' ? '#3498db' : '#ecf0f1',
-            color: timeRange === 'week' ? 'white' : '#2c3e50',
+            backgroundColor: timeRange === 'week' ? '#3498db' : 'var(--track)',
+            color: timeRange === 'week' ? 'white' : 'var(--text)',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer'
@@ -170,8 +191,8 @@ function ProgressCharts({ userId = 'default_user' }) {
           onClick={() => setTimeRange('month')}
           style={{
             padding: '8px 16px',
-            backgroundColor: timeRange === 'month' ? '#3498db' : '#ecf0f1',
-            color: timeRange === 'month' ? 'white' : '#2c3e50',
+            backgroundColor: timeRange === 'month' ? '#3498db' : 'var(--track)',
+            color: timeRange === 'month' ? 'white' : 'var(--text)',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer'
@@ -183,7 +204,7 @@ function ProgressCharts({ userId = 'default_user' }) {
       
       {/* Points Over Time Chart */}
       <div style={{ marginBottom: '40px' }}>
-        <h3 style={{ color: '#2c3e50', marginBottom: '15px' }}>
+        <h3 style={{ color: 'var(--text)', marginBottom: '15px' }}>
           {timeRange === 'day' ? 'Daily' : timeRange === 'week' ? 'Weekly' : 'Monthly'} Points
         </h3>
         <div style={{ height: '300px' }}>
@@ -207,6 +228,7 @@ function ProgressCharts({ userId = 'default_user' }) {
               plugins: {
                 legend: {
                   position: 'top',
+                  labels: { color: textColor }
                 },
                 tooltip: {
                   callbacks: {
@@ -217,17 +239,9 @@ function ProgressCharts({ userId = 'default_user' }) {
               scales: {
                 y: {
                   beginAtZero: true,
-                  title: {
-                    display: true,
-                    text: 'Points'
-                  }
+                  ...axisOptions('Points')
                 },
-                x: {
-                  title: {
-                    display: true,
-                    text: timeRange === 'day' ? 'Day' : timeRange === 'week' ? 'Week' : 'Month'
-                  }
-                }
+                x: axisOptions(timeRange === 'day' ? 'Day' : timeRange === 'week' ? 'Week' : 'Month')
               }
             }}
           />
@@ -236,7 +250,7 @@ function ProgressCharts({ userId = 'default_user' }) {
       
       {/* Category Distribution Chart */}
       <div>
-        <h3 style={{ color: '#2c3e50', marginBottom: '15px' }}>Points by Category</h3>
+        <h3 style={{ color: 'var(--text)', marginBottom: '15px' }}>Points by Category</h3>
         <div style={{ height: '300px' }}>
           <Bar
             data={{
@@ -275,11 +289,9 @@ function ProgressCharts({ userId = 'default_user' }) {
               scales: {
                 y: {
                   beginAtZero: true,
-                  title: {
-                    display: true,
-                    text: 'Points'
-                  }
-                }
+                  ...axisOptions('Points')
+                },
+                x: axisOptions()
               }
             }}
           />

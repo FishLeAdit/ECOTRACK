@@ -4,7 +4,8 @@ body, html, #root {
   margin: 0;
   padding: 0;
   font-family: Arial, sans-serif;
-  background: #f7f7f7;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .App {
@@ -70,8 +71,8 @@ body, html, #root {
 .activity-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
+  gap: 10px;
+  justify-content: flex-start;
 }
 
 .activity-box {
@@ -97,6 +98,17 @@ body, html, #root {
 
 .activity-box.negative {
   background-color: #c0392b;
+}
+
+.activity-box:hover {
+  transform: translateY(-2px);
+}
+
+/* Status pill on goal history cards: pinned to the corner on wide screens, in the flow on phones */
+.goal-status-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
 }
 
 .scrollable-list {
@@ -151,18 +163,20 @@ body, html, #root {
     align-items: flex-start;
     padding: 10px 0 6px 0;
   }
+  /* Two compact columns on phones instead of one tall list */
   .activity-grid {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    align-items: stretch;
   }
   .activity-box {
     width: 100%;
     min-width: unset;
     max-width: unset;
-    height: 80px;
+    height: 96px;
+    padding: 8px;
     font-size: 10px;
-    margin: 0 0 8px 0;
+    margin: 0;
   }
   .scrollable-list {
     max-height: 180px;
@@ -170,5 +184,10 @@ body, html, #root {
   }
   .goal-progress-bar-inner {
     height: 14px;
+  }
+  .goal-status-badge {
+    position: static;
+    display: inline-block;
+    margin-bottom: 14px;
   }
 }

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 
 function Home() {
   const [activities, setActivities] = useState([]);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/activities')
+    api.get('/api/activities')
       .then(res => setActivities(res.data))
       .catch(err => console.error(err));
   }, []);
@@ -15,7 +15,7 @@ function Home() {
       <h1>Eco Activities</h1>
       <ul>
         {activities.map((a, i) => (
-          <li key={i}>{a.activity} - {a.points} pts</li>
+          <li key={i}>{a.activityName} - {a.points} pts</li>
         ))}
       </ul>
     </div>
