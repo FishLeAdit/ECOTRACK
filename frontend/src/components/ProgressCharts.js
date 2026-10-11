@@ -15,7 +15,7 @@ import {
   ArcElement,
   Filler
 } from 'chart.js';
-import { Bar, Line, Pie } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
